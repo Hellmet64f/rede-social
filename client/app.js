@@ -1,4 +1,4 @@
-// Elementos da página
+    // Elementos da página
 const loginPage = document.getElementById('loginPage');
 const dashboardPage = document.getElementById('dashboardPage');
 const feedContainer = document.getElementById('feedContainer');
