@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GitHub Auth Callback</title>
+    <script>
+        // Pegar o code do URL
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get('code');
+        const state = params.get('state');
+        
+        if (code) {
+            // Salvar o code no localStorage
+            localStorage.setItem('github_code', code);
+            localStorage.setItem('github_state', state);
+            
+            // Redirecionar de volta para a página principal
+            window.location.href = '/';
+        } else {
+            document.body.innerHTML = '<h1>Erro na autenticação</h1>';
+        }
+    </script>
+</head>
+<body>
+    <h1>Autenticando...</h1>
+</body>
+</html>
