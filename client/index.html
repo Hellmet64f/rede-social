@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rede Social - Compartilhe Tudo</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Página de Login -->
+    <div id="loginPage" class="page-container">
+        <div class="login-container">
+            <div class="login-box">
+                <h1>🚀 Rede Social</h1>
+                <p>Compartilhe vídeos, fotos e textos com seus amigos</p>
+                <a href="http://localhost:4000/auth/github" class="btn-github">
+                    🔗 Entrar com GitHub
+                </a>
+                <p class="info-text">Você será redirecionado para autenticar via GitHub</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Página do Dashboard -->
+    <div id="dashboardPage" class="page-container hidden">
+        <nav class="navbar">
+            <div class="navbar-container">
+                <h2 class="logo">📱 Rede Social</h2>
+                <div class="user-info">
+                    <img id="userAvatar" src="" alt="Avatar" class="avatar">
+                    <span id="username"></span>
+                    <button id="logoutBtn" class="btn-logout">Sair</button>
+                </div>
+            </div>
+        </nav>
+
+        <div class="dashboard-container">
+            <!-- Formulário de Postagem -->
+            <div class="post-form-container">
+                <div class="form-header">
+                    <img id="userAvatarForm" src="" alt="Avatar" class="avatar-small">
+                    <textarea id="postContent" placeholder="O que você quer compartilhar?" maxlength="500"></textarea>
+                </div>
+
+                <div class="form-controls">
+                    <div class="file-input-wrapper">
+                        <input type="file" id="fileInput" accept="image/*,video/*">
+                        <button class="btn-upload">📎 Anexar Mídia</button>
+                    </div>
+                    <button id="postBtn" class="btn-post">Postar</button>
+                </div>
+
+                <div id="filePreview" class="file-preview hidden"></div>
+                <p id="charCount" class="char-count">0/500</p>
+            </div>
+
+            <!-- Feed de Postagens -->
+            <div class="feed-container" id="feedContainer">
+                <div class="loading">Carregando postagens...</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
