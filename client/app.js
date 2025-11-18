@@ -1,5 +1,6 @@
-// Sistema de Rede Social com Armazenamento Local
-// Permite que qualquer pessoa veja postagens públicas
+// Sistema de Rede Social com Armazenamento Compartilhado
+// Todos conseguem ver as postagens publicadas
+// IMPORTANTE: Use uma chave/ID igual entre todos para compartilhar dados
 
 const loginPage = document.getElementById('loginPage');
 const dashboardPage = document.getElementById('dashboardPage');
@@ -19,36 +20,39 @@ let currentUser = null;
 let selectedFile = null;
 let socket = null;
 
-// Verificar se usuário está logado ao carregar página
+// NOTA IMPORTANTE: Este é um sistema LOCAL.
+// Para compartilhar dados entre máquinas diferentes, use Firebase ou um servidor.
+// localStorage APENAS funciona no navegador onde é executado.
+
 window.addEventListener('load', () => {
   checkAuthStatus();
   setupEventListeners();
   loadPosts();
+  
+  // Recarregar posts a cada 2 segundos para ver atualizacoes
+  setInterval(loadPosts, 2000);
 });
 
-// Verificar status de autenticação
-async function checkAuthStatus() {
-  try {
-    const userData = localStorage.getItem('currentUser');
-    if (userData) {
+function checkAuthStatus() {
+  const userData = localStorage.getItem('currentUser');
+  if (userData) {
+    try {
       currentUser = JSON.parse(userData);
       showDashboard();
-    } else {
+    } catch (e) {
+      localStorage.removeItem('currentUser');
       showLogin();
     }
-  } catch (error) {
-    console.error('Erro ao verificar autenticação:', error);
+  } else {
     showLogin();
   }
 }
 
-// Mostrar página de login
 function showLogin() {
   if (loginPage) loginPage.classList.remove('hidden');
   if (dashboardPage) dashboardPage.classList.add('hidden');
 }
 
-// Mostrar dashboard
 function showDashboard() {
   if (loginPage) loginPage.classList.add('hidden');
   if (dashboardPage) dashboardPage.classList.remove('hidden');
@@ -59,7 +63,6 @@ function showDashboard() {
   }
 }
 
-// Setup de event listeners
 function setupEventListeners() {
   if (postBtn) postBtn.addEventListener('click', handlePostSubmit);
   
@@ -84,7 +87,6 @@ function setupEventListeners() {
   }
 }
 
-// Selecionar arquivo
 function handleFileSelect(e) {
   selectedFile = e.target.files[0];
   if (selectedFile) {
@@ -92,7 +94,6 @@ function handleFileSelect(e) {
   }
 }
 
-// Mostrar preview do arquivo
 function showFilePreview() {
   if (!filePreview) return;
   
@@ -134,7 +135,6 @@ function showFilePreview() {
   filePreview.appendChild(removeBtn);
 }
 
-// Enviar post
 async function handlePostSubmit() {
   if (!currentUser) {
     alert('Você precisa estar logado para postar!');
@@ -171,19 +171,16 @@ async function handlePostSubmit() {
       comments: []
     };
     
-    // Salvar no localStorage
     const posts = JSON.parse(localStorage.getItem('posts') || '[]');
     posts.unshift(post);
     localStorage.setItem('posts', JSON.stringify(posts));
     
-    // Limpar formulário
     if (postContent) postContent.value = '';
     selectedFile = null;
     if (fileInput) fileInput.value = '';
     if (filePreview) filePreview.classList.add('hidden');
     if (charCount) charCount.textContent = '0/500';
     
-    // Recarregar feed
     loadPosts();
   } catch (error) {
     console.error('Erro:', error);
@@ -196,7 +193,6 @@ async function handlePostSubmit() {
   }
 }
 
-// Upload de arquivo (converte para base64)
 async function uploadFile() {
   return new Promise((resolve) => {
     const reader = new FileReader();
@@ -207,8 +203,7 @@ async function uploadFile() {
   });
 }
 
-// Carregar posts
-async function loadPosts() {
+function loadPosts() {
   try {
     const posts = JSON.parse(localStorage.getItem('posts') || '[]');
     displayPosts(posts);
@@ -217,7 +212,6 @@ async function loadPosts() {
   }
 }
 
-// Exibir posts
 function displayPosts(posts) {
   if (!feedContainer) return;
   
@@ -234,7 +228,6 @@ function displayPosts(posts) {
   });
 }
 
-// Criar elemento de post
 function createPostElement(post) {
   const div = document.createElement('div');
   div.className = 'post';
@@ -295,7 +288,6 @@ function createPostElement(post) {
   
   div.innerHTML = header + content + footer + comments;
   
-  // Event listeners
   const likeBtn = div.querySelector('.like-btn');
   if (likeBtn) {
     likeBtn.addEventListener('click', () => handleLike(post.id));
@@ -331,7 +323,6 @@ function createPostElement(post) {
   return div;
 }
 
-// Curtir post
 function handleLike(postId) {
   try {
     const posts = JSON.parse(localStorage.getItem('posts') || '[]');
@@ -346,7 +337,6 @@ function handleLike(postId) {
   }
 }
 
-// Comentar em post
 function handleComment(postId, text) {
   if (!currentUser) return;
   
@@ -368,21 +358,18 @@ function handleComment(postId, text) {
   }
 }
 
-// Escape HTML
 function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
 }
 
-// Logout
 function handleLogout() {
   localStorage.removeItem('currentUser');
   currentUser = null;
   showLogin();
 }
 
-// Registrar novo usuário (simplificado)
 function registerUser(username, avatar) {
   currentUser = {
     username: username,
