@@ -1,4 +1,6 @@
-    // Elementos da página
+// Sistema de Rede Social com Armazenamento Local
+// Permite que qualquer pessoa veja postagens públicas
+
 const loginPage = document.getElementById('loginPage');
 const dashboardPage = document.getElementById('dashboardPage');
 const feedContainer = document.getElementById('feedContainer');
@@ -17,376 +19,376 @@ let currentUser = null;
 let selectedFile = null;
 let socket = null;
 
-const API_URL = 'http://localhost:4000';
-
 // Verificar se usuário está logado ao carregar página
 window.addEventListener('load', () => {
-    checkAuthStatus();
-    setupEventListeners();
+  checkAuthStatus();
+  setupEventListeners();
+  loadPosts();
 });
 
 // Verificar status de autenticação
 async function checkAuthStatus() {
-    try {
-        const response = await fetch(`${API_URL}/api/user`, {
-            credentials: 'include'
-        });
-        if (response.ok) {
-            currentUser = await response.json();
-            showDashboard();
-            initializeSocket();
-            loadPosts();
-        } else {
-            showLogin();
-        }
-    } catch (error) {
-        console.error('Erro ao verificar autenticação:', error);
-        showLogin();
+  try {
+    const userData = localStorage.getItem('currentUser');
+    if (userData) {
+      currentUser = JSON.parse(userData);
+      showDashboard();
+    } else {
+      showLogin();
     }
+  } catch (error) {
+    console.error('Erro ao verificar autenticação:', error);
+    showLogin();
+  }
 }
 
 // Mostrar página de login
 function showLogin() {
-    loginPage.classList.remove('hidden');
-    dashboardPage.classList.add('hidden');
+  if (loginPage) loginPage.classList.remove('hidden');
+  if (dashboardPage) dashboardPage.classList.add('hidden');
 }
 
 // Mostrar dashboard
 function showDashboard() {
-    loginPage.classList.add('hidden');
-    dashboardPage.classList.remove('hidden');
-    if (currentUser) {
-        userAvatar.src = currentUser.avatar;
-        userAvatarForm.src = currentUser.avatar;
-        username.textContent = currentUser.username;
-    }
+  if (loginPage) loginPage.classList.add('hidden');
+  if (dashboardPage) dashboardPage.classList.remove('hidden');
+  if (currentUser) {
+    if (userAvatar) userAvatar.src = currentUser.avatar || 'https://via.placeholder.com/40';
+    if (userAvatarForm) userAvatarForm.src = currentUser.avatar || 'https://via.placeholder.com/40';
+    if (username) username.textContent = currentUser.username;
+  }
 }
 
 // Setup de event listeners
 function setupEventListeners() {
-    // Botão de postar
-    postBtn.addEventListener('click', handlePostSubmit);
-    
-    // Contador de caracteres
+  if (postBtn) postBtn.addEventListener('click', handlePostSubmit);
+  
+  if (postContent) {
     postContent.addEventListener('input', (e) => {
-        charCount.textContent = `${e.target.value.length}/500`;
+      if (charCount) charCount.textContent = `${e.target.value.length}/500`;
     });
-    
-    // Upload de arquivo
-    uploadBtn.addEventListener('click', () => fileInput.click());
+  }
+  
+  if (uploadBtn) {
+    uploadBtn.addEventListener('click', () => {
+      if (fileInput) fileInput.click();
+    });
+  }
+  
+  if (fileInput) {
     fileInput.addEventListener('change', handleFileSelect);
-    
-    // Logout
+  }
+  
+  if (logoutBtn) {
     logoutBtn.addEventListener('click', handleLogout);
+  }
 }
 
 // Selecionar arquivo
 function handleFileSelect(e) {
-    selectedFile = e.target.files[0];
-    if (selectedFile) {
-        showFilePreview();
-    }
+  selectedFile = e.target.files[0];
+  if (selectedFile) {
+    showFilePreview();
+  }
 }
 
 // Mostrar preview do arquivo
 function showFilePreview() {
-    if (!selectedFile) {
-        filePreview.classList.add('hidden');
-        return;
-    }
-
-    filePreview.classList.remove('hidden');
-    filePreview.innerHTML = '';
-
-    if (selectedFile.type.startsWith('image/')) {
-        const img = document.createElement('img');
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            img.src = e.target.result;
-        };
-        reader.readAsDataURL(selectedFile);
-        filePreview.appendChild(img);
-    } else if (selectedFile.type.startsWith('video/')) {
-        const video = document.createElement('video');
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            video.src = e.target.result;
-            video.controls = true;
-        };
-        reader.readAsDataURL(selectedFile);
-        filePreview.appendChild(video);
-    }
-
-    const removeBtn = document.createElement('button');
-    removeBtn.className = 'remove-file';
-    removeBtn.textContent = '✕';
-    removeBtn.onclick = () => {
-        selectedFile = null;
-        fileInput.value = '';
-        filePreview.classList.add('hidden');
+  if (!filePreview) return;
+  
+  if (!selectedFile) {
+    filePreview.classList.add('hidden');
+    return;
+  }
+  
+  filePreview.classList.remove('hidden');
+  filePreview.innerHTML = '';
+  
+  if (selectedFile.type.startsWith('image/')) {
+    const img = document.createElement('img');
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      img.src = e.target.result;
     };
-    filePreview.appendChild(removeBtn);
+    reader.readAsDataURL(selectedFile);
+    filePreview.appendChild(img);
+  } else if (selectedFile.type.startsWith('video/')) {
+    const video = document.createElement('video');
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      video.src = e.target.result;
+      video.controls = true;
+    };
+    reader.readAsDataURL(selectedFile);
+    filePreview.appendChild(video);
+  }
+  
+  const removeBtn = document.createElement('button');
+  removeBtn.className = 'remove-file';
+  removeBtn.textContent = '✕';
+  removeBtn.onclick = () => {
+    selectedFile = null;
+    if (fileInput) fileInput.value = '';
+    filePreview.classList.add('hidden');
+  };
+  filePreview.appendChild(removeBtn);
 }
 
 // Enviar post
 async function handlePostSubmit() {
-    const content = postContent.value.trim();
-    
-    if (!content && !selectedFile) {
-        alert('Escreva algo ou selecione um arquivo!');
-        return;
-    }
-
+  if (!currentUser) {
+    alert('Você precisa estar logado para postar!');
+    showLogin();
+    return;
+  }
+  
+  const content = postContent.value.trim();
+  
+  if (!content && !selectedFile) {
+    alert('Escreva algo ou selecione um arquivo!');
+    return;
+  }
+  
+  if (postBtn) {
     postBtn.disabled = true;
     postBtn.textContent = 'Enviando...';
-
-    let fileUrl = null;
-    if (selectedFile) {
-        fileUrl = await uploadFile();
+  }
+  
+  let fileUrl = null;
+  if (selectedFile) {
+    fileUrl = await uploadFile();
+  }
+  
+  try {
+    const post = {
+      id: Date.now(),
+      username: currentUser.username,
+      avatar: currentUser.avatar || 'https://via.placeholder.com/40',
+      content: content,
+      fileUrl: fileUrl,
+      timestamp: new Date().toISOString(),
+      likes: 0,
+      comments: []
+    };
+    
+    // Salvar no localStorage
+    const posts = JSON.parse(localStorage.getItem('posts') || '[]');
+    posts.unshift(post);
+    localStorage.setItem('posts', JSON.stringify(posts));
+    
+    // Limpar formulário
+    if (postContent) postContent.value = '';
+    selectedFile = null;
+    if (fileInput) fileInput.value = '';
+    if (filePreview) filePreview.classList.add('hidden');
+    if (charCount) charCount.textContent = '0/500';
+    
+    // Recarregar feed
+    loadPosts();
+  } catch (error) {
+    console.error('Erro:', error);
+    alert('Erro ao enviar post');
+  } finally {
+    if (postBtn) {
+      postBtn.disabled = false;
+      postBtn.textContent = 'Postar';
     }
-
-    try {
-        const response = await fetch(`${API_URL}/api/posts`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            credentials: 'include',
-            body: JSON.stringify({
-                content: content,
-                fileUrl: fileUrl
-            })
-        });
-
-        if (response.ok) {
-            postContent.value = '';
-            selectedFile = null;
-            fileInput.value = '';
-            filePreview.classList.add('hidden');
-            charCount.textContent = '0/500';
-        } else {
-            alert('Erro ao enviar post');
-        }
-    } catch (error) {
-        console.error('Erro:', error);
-        alert('Erro ao enviar post');
-    } finally {
-        postBtn.disabled = false;
-        postBtn.textContent = 'Postar';
-    }
+  }
 }
 
-// Upload de arquivo
+// Upload de arquivo (converte para base64)
 async function uploadFile() {
-    const formData = new FormData();
-    formData.append('file', selectedFile);
-
-    try {
-        // Se você tem um endpoint de upload, use aqui
-        // Caso contrário, converta para base64
-        return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                resolve(e.target.result); // Retorna base64
-            };
-            reader.readAsDataURL(selectedFile);
-        });
-    } catch (error) {
-        console.error('Erro ao upload:', error);
-        return null;
-    }
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      resolve(e.target.result);
+    };
+    reader.readAsDataURL(selectedFile);
+  });
 }
 
 // Carregar posts
 async function loadPosts() {
-    try {
-        const response = await fetch(`${API_URL}/api/posts`);
-        if (response.ok) {
-            const posts = await response.json();
-            displayPosts(posts);
-        }
-    } catch (error) {
-        console.error('Erro ao carregar posts:', error);
-    }
+  try {
+    const posts = JSON.parse(localStorage.getItem('posts') || '[]');
+    displayPosts(posts);
+  } catch (error) {
+    console.error('Erro ao carregar posts:', error);
+  }
 }
 
 // Exibir posts
 function displayPosts(posts) {
-    feedContainer.innerHTML = '';
-    
-    if (posts.length === 0) {
-        feedContainer.innerHTML = '<div class="loading">Nenhuma postagem ainda. Seja o primeiro a postar!</div>';
-        return;
-    }
-
-    posts.forEach(post => {
-        const postElement = createPostElement(post);
-        feedContainer.appendChild(postElement);
-    });
+  if (!feedContainer) return;
+  
+  feedContainer.innerHTML = '';
+  
+  if (posts.length === 0) {
+    feedContainer.innerHTML = '<div class="loading">Nenhuma postagem ainda. Seja o primeiro a postar!</div>';
+    return;
+  }
+  
+  posts.forEach(post => {
+    const postElement = createPostElement(post);
+    feedContainer.appendChild(postElement);
+  });
 }
 
 // Criar elemento de post
 function createPostElement(post) {
-    const div = document.createElement('div');
-    div.className = 'post';
-
-    const header = `
-        <div class="post-header">
-            <img src="${post.avatar}" alt="Avatar" class="avatar">
-            <div class="post-header-info">
-                <h3>${post.username}</h3>
-                <time>${new Date(post.timestamp).toLocaleString('pt-BR')}</time>
-            </div>
-        </div>
-    `;
-
-    let content = `<div class="post-content"><p class="post-text">${escapeHtml(post.content)}</p>`;
-    
-    if (post.fileUrl) {
-        if (post.fileUrl.startsWith('data:image')) {
-            content += `<img src="${post.fileUrl}" alt="Imagem" class="post-media">`;
-        } else if (post.fileUrl.startsWith('data:video')) {
-            content += `<video controls class="post-media"><source src="${post.fileUrl}"></video>`;
-        }
+  const div = document.createElement('div');
+  div.className = 'post';
+  
+  const header = `
+    <div class="post-header">
+      <img src="${post.avatar}" alt="Avatar" class="avatar">
+      <div class="post-header-info">
+        <h3>${escapeHtml(post.username)}</h3>
+        <time>${new Date(post.timestamp).toLocaleString('pt-BR')}</time>
+      </div>
+    </div>
+  `;
+  
+  let content = `<div class="post-content"><p class="post-text">${escapeHtml(post.content)}</p>`;
+  
+  if (post.fileUrl) {
+    if (post.fileUrl.startsWith('data:image')) {
+      content += `<img src="${post.fileUrl}" alt="Imagem" class="post-media">`;
+    } else if (post.fileUrl.startsWith('data:video')) {
+      content += `<video controls class="post-media"><source src="${post.fileUrl}"></video>`;
     }
-    content += '</div>';
-
-    const footer = `
-        <div class="post-footer">
-            <button class="post-action like-btn" data-post-id="${post.id}">
-                💙 <span class="likes-count">${post.likes || 0}</span>
-            </button>
-            <button class="post-action comment-btn" data-post-id="${post.id}">
-                💬 ${post.comments?.length || 0}
-            </button>
+  }
+  content += '</div>';
+  
+  const footer = `
+    <div class="post-footer">
+      <button class="post-action like-btn" data-post-id="${post.id}">
+        💙 <span class="likes-count">${post.likes || 0}</span>
+      </button>
+      <button class="post-action comment-btn" data-post-id="${post.id}">
+        💬 ${post.comments?.length || 0}
+      </button>
+    </div>
+  `;
+  
+  let comments = '';
+  if (post.comments && post.comments.length > 0) {
+    comments += '<div class="comments-section">';
+    post.comments.forEach(comment => {
+      comments += `
+        <div class="comment">
+          <div class="comment-author">${escapeHtml(comment.username)}</div>
+          <div class="comment-text">${escapeHtml(comment.text)}</div>
+          <div class="comment-time">${new Date(comment.timestamp).toLocaleString('pt-BR')}</div>
         </div>
-    `;
-
-    let comments = '';
-    if (post.comments && post.comments.length > 0) {
-        comments += '<div class="comments-section">';
-        post.comments.forEach(comment => {
-            comments += `
-                <div class="comment">
-                    <div class="comment-author">${escapeHtml(comment.username)}</div>
-                    <div class="comment-text">${escapeHtml(comment.text)}</div>
-                    <div class="comment-time">${new Date(comment.timestamp).toLocaleString('pt-BR')}</div>
-                </div>
-            `;
-        });
-        comments += '</div>';
-    }
-
-    comments += `
-        <div class="comment-input-group">
-            <input type="text" placeholder="Escrever um comentário..." class="comment-input" data-post-id="${post.id}">
-            <button class="comment-btn send-comment" data-post-id="${post.id}">Enviar</button>
-        </div>
-    `;
-
-    div.innerHTML = header + content + footer + comments;
-
-    // Event listeners
-    const likeBtn = div.querySelector('.like-btn');
-    likeBtn.addEventListener('click', () => handleLike(post.id, likeBtn));
-
-    const sendCommentBtn = div.querySelector('.send-comment');
-    const commentInput = div.querySelector('.comment-input');
+      `;
+    });
+    comments += '</div>';
+  }
+  
+  comments += `
+    <div class="comment-input-group">
+      <input type="text" placeholder="Escrever um comentário..." class="comment-input" data-post-id="${post.id}">
+      <button class="comment-btn send-comment" data-post-id="${post.id}">Enviar</button>
+    </div>
+  `;
+  
+  div.innerHTML = header + content + footer + comments;
+  
+  // Event listeners
+  const likeBtn = div.querySelector('.like-btn');
+  if (likeBtn) {
+    likeBtn.addEventListener('click', () => handleLike(post.id));
+  }
+  
+  const sendCommentBtn = div.querySelector('.send-comment');
+  const commentInput = div.querySelector('.comment-input');
+  
+  if (sendCommentBtn) {
     sendCommentBtn.addEventListener('click', () => {
+      if (commentInput && currentUser) {
         const text = commentInput.value.trim();
         if (text) {
-            handleComment(post.id, text, commentInput);
+          handleComment(post.id, text);
         }
+      } else if (!currentUser) {
+        alert('Você precisa estar logado para comentar!');
+      }
     });
+  }
+  
+  if (commentInput) {
     commentInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            const text = commentInput.value.trim();
-            if (text) {
-                handleComment(post.id, text, commentInput);
-            }
+      if (e.key === 'Enter' && currentUser) {
+        const text = e.target.value.trim();
+        if (text) {
+          handleComment(post.id, text);
         }
+      }
     });
-
-    return div;
+  }
+  
+  return div;
 }
 
 // Curtir post
-function handleLike(postId, button) {
-    if (socket) {
-        socket.emit('curtir-post', postId);
-        button.classList.add('liked');
+function handleLike(postId) {
+  try {
+    const posts = JSON.parse(localStorage.getItem('posts') || '[]');
+    const post = posts.find(p => p.id === postId);
+    if (post) {
+      post.likes = (post.likes || 0) + 1;
+      localStorage.setItem('posts', JSON.stringify(posts));
+      loadPosts();
     }
+  } catch (error) {
+    console.error('Erro ao curtir:', error);
+  }
 }
 
 // Comentar em post
-function handleComment(postId, text, input) {
-    if (socket && currentUser) {
-        socket.emit('comentar', {
-            postId: postId,
-            username: currentUser.username,
-            text: text
-        });
-        input.value = '';
+function handleComment(postId, text) {
+  if (!currentUser) return;
+  
+  try {
+    const posts = JSON.parse(localStorage.getItem('posts') || '[]');
+    const post = posts.find(p => p.id === postId);
+    if (post) {
+      post.comments = post.comments || [];
+      post.comments.push({
+        username: currentUser.username,
+        text: text,
+        timestamp: new Date().toISOString()
+      });
+      localStorage.setItem('posts', JSON.stringify(posts));
+      loadPosts();
     }
+  } catch (error) {
+    console.error('Erro ao comentar:', error);
+  }
 }
 
 // Escape HTML
 function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 }
 
 // Logout
 function handleLogout() {
-    window.location.href = `${API_URL}/logout`;
+  localStorage.removeItem('currentUser');
+  currentUser = null;
+  showLogin();
 }
 
-// Inicializar WebSocket
-function initializeSocket() {
-    try {
-        const script = document.createElement('script');
-        script.src = 'https://cdn.socket.io/4.5.4/socket.io.min.js';
-        script.onload = () => {
-            socket = io(API_URL);
-
-            socket.on('connect', () => {
-                console.log('Conectado ao servidor');
-            });
-
-            socket.on('posts-iniciais', (posts) => {
-                displayPosts(posts);
-            });
-
-            socket.on('novo-post', (post) => {
-                const postElement = createPostElement(post);
-                feedContainer.insertBefore(postElement, feedContainer.firstChild);
-            });
-
-            socket.on('post-curtido', ({ postId, likes }) => {
-                const likeBtn = document.querySelector(`[data-post-id="${postId}"].like-btn`);
-                if (likeBtn) {
-                    likeBtn.querySelector('.likes-count').textContent = likes;
-                }
-            });
-
-            socket.on('novo-comentario', ({ postId, comment }) => {
-                const post = document.querySelector(`.post[data-post-id="${postId}"]`);
-                if (post) {
-                    const commentsSection = post.querySelector('.comments-section');
-                    const newComment = document.createElement('div');
-                    newComment.className = 'comment';
-                    newComment.innerHTML = `
-                        <div class="comment-author">${escapeHtml(comment.username)}</div>
-                        <div class="comment-text">${escapeHtml(comment.text)}</div>
-                        <div class="comment-time">${new Date(comment.timestamp).toLocaleString('pt-BR')}</div>
-                    `;
-                    commentsSection.appendChild(newComment);
-                }
-            });
-        };
-        document.head.appendChild(script);
-    } catch (error) {
-        console.error('Erro ao inicializar WebSocket:', error);
-    }
+// Registrar novo usuário (simplificado)
+function registerUser(username, avatar) {
+  currentUser = {
+    username: username,
+    avatar: avatar || 'https://via.placeholder.com/40'
+  };
+  localStorage.setItem('currentUser', JSON.stringify(currentUser));
+  showDashboard();
+  loadPosts();
 }
